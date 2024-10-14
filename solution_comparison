@@ -1,0 +1,69 @@
+from openai import OpenAI
+import question_generator
+import solution_generator
+import sqlite3
+
+my_connection = sqlite3.connect("my3.db")
+cursor_object = my_connection.cursor()
+
+client = OpenAI(api_key="...") #Please add your API key here 
+model = "gpt-3.5-turbo"
+
+def solution_comparison(username, score): 
+    """Compares the user's solution with it's own solution developed in previous step to determine if the user 
+    has given the correct answer. It checks two things namely, functionality of the code and variable name for 
+    exercises, and output values for short answer questions."""   
+
+    global generated_answer
+    global file_content
+
+    if (question_generator.question_type == "2"):
+        comparison_prompt = f""" 
+        
+        First code snippet is: {solution_generator.generated_answer} # AI generated solution
+        Second code snippet is: {solution_generator.file_content} # User's solution
+
+        You are provided with two different code snippets above. Your job is to compare these two code snippets 
+        and determine if they perform the same functionality. In addition to this, also make sure the second 
+        code snippet uses the exact same variable names for the functionality as the first code snippet. 
+
+        If the functionality of both the code snippets and the variable names are exactly the same, respond: Yes.
+        Otherwise, respond No.
+
+        Even if the variable names are not matching, despite performing the same functionality, respond No.
+        """
+
+        comparison_response = client.chat.completions.create(model=model, messages=[
+        {"role": "system", "content": "You are a coding assistant. You carefully and diligently compare two"
+         " different snippets of code and determine if they perform the same functionality and contain the same"
+         " exact variable names."},
+        {"role": "user", "content": comparison_prompt}], 
+        temperature=1, max_tokens=250, top_p=1, frequency_penalty=0, presence_penalty=0)
+
+        comparison_answer = comparison_response.choices[0].message.content
+
+        print("Comparison answer is ", comparison_answer) #This line displays the AI solution to the user
+        
+
+        if("Yes" in comparison_answer):
+            print("Your answer is right! :) \n")
+            score +=1
+            update_user_command = f"""UPDATE users2 SET score = {score} WHERE username = {username};"""
+            cursor_object.execute(update_user_command)
+            my_connection.commit()
+            again_choice = input("Would you like to play again? Choose: \n 1. Play again \n 2. Quit \n")
+
+        elif("No" or "no" in comparison_answer):
+            print("Oops! Wrong answer :( \n")
+            again_choice = input("Would you like to play again? Choose: \n 1. Play again \n 2. Quit \n")
+
+        if (again_choice == "2"):
+            print("Thank you for playing!")
+            username = ""
+            password = ""
+            score = 0
+            exit()
+
+        elif(again_choice == "1"):
+            question_generator.question_generator()
+            solution_generator.solution_generator(username, score)
