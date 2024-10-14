@@ -1,0 +1,88 @@
+from openai import OpenAI
+import question_generator
+import solution_comparison
+import sqlite3
+
+client = OpenAI(api_key="...") # Please add your API key here.
+model = "gpt-3.5-turbo"
+
+my_connection = sqlite3.connect("my3.db")
+cursor_object = my_connection.cursor()
+
+def solution_generator(username, score):
+    """Generates the solution for the question generated in the earlier stage by the mode. Contains the prompt
+    needed to instruct the model to generate the solution in the required format"""
+    global generated_text
+    global generated_answer
+    global file_content
+
+    if (question_generator.question_type == "1") :
+        solution_prompt = f""" {question_generator.generated_text}
+
+        For the prompt, please provide what will be the output of the program. Do not provide any explanation
+        after the code. Just provide the numberical value of the output"""
+
+        solution_response = client.chat.completions.create(model = model, messages = [
+        {"role": "system", "content":"You are a coding expert. Using the prompt provided to you, generate the "
+        "output of the c++ program"},
+        {"role": "user", "content": solution_prompt} ], 
+        temperature=1, max_tokens=250, top_p=1, frequency_penalty=0, presence_penalty=0)
+
+    else:
+        solution_prompt = f""" {question_generator.generated_text} 
+
+        For the prompt provided, please provide a complete c++ program solution in the format. Start your answer 
+        with Solution.  This should be followed by the code. Only provide the word Solution on the first line. 
+        From the next line, provide your complete c++ solution with the correct format and the include 
+        statements, main function, etc to the question / prompt. Please keep in mind the following while 
+        generating the solution: 
+
+        Do not provide the following:
+        1. Make sure not to include any explanation of the program after your solution. 
+        2. Make sure not to include any comments in your c++ program solution.  
+        """
+
+        solution_response = client.chat.completions.create(model = model, messages = [
+        {"role": "system", "content":"You are a code generator. Using the prompt provided to you, generate a c++"
+        "program to solve it. Make sure to use exact variable names as specified by the prompt"},
+        {"role": "user", "content": solution_prompt} ], 
+        temperature=1, max_tokens=250, top_p=1, frequency_penalty=0, presence_penalty=0)
+
+
+    answer = solution_response.choices[0].message.content
+    cleaned_answer = answer.replace("'''cpp", "").replace("```c++", "").replace("```", "").replace("Solution:", "")
+    generated_answer = cleaned_answer.replace("cpp", "").replace("// Rest of the code", "").replace("Solution", "")
+
+
+    print("Generated answer is: ", generated_answer) # This line is for users to test the game with AI solution. It will be removed for the actual game.
+
+    if (question_generator.question_type == "2") :
+        file_name = input("\nEnter the file name that contains that solution: \n") # Prompt user for file name
+        file1 = open(file_name, "r") # open file
+        file_content = file1.read() # Read file contents
+        solution_comparison.solution_comparison(username, score) # Solution_comparison function is called 
+
+    elif(question_generator.question_type == "1"):
+        user_output = input("Please type in the output below: \n")
+        if (user_output == generated_answer):
+            
+            score +=1
+            update_user_command = f"""UPDATE users2 SET score = {score} WHERE username = {username};"""
+            cursor_object.execute(update_user_command)
+            my_connection.commit()
+            again_choice = input("That's correct! Would you like to play again? Choose: \n 1. Play again \n 2. Quit \n")
+        
+        elif (user_output != generated_answer):
+            print("Incorrect. Better luck next time! \n")
+            again_choice = input("Would you like to play again? Choose: \n 1. Play again \n 2. Quit \n")
+
+        if (again_choice == "2"):
+            print("Thank you for playing!")
+            username = ""
+            password = ""
+            score = 0
+            exit()
+
+        elif(again_choice == "1"):
+            question_generator.question_generator()
+            solution_generator(username, score)  
