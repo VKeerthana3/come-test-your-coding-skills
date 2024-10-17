@@ -4,7 +4,9 @@ This application is called Come Test Your Coding Skills! It is a command-line ap
 
 It consists of four python modules, final.py, question_generator.py, solution_generator.py, and solution_comparison.py. The github repo also contains the text file where the user can enter their code for the coding exercise, and sqlite database file created for the application.
 
-ARCHITCTURE DIAGRAM image
+ARCHITCTURE DIAGRAM
+
+![image](https://github.com/user-attachments/assets/6b626394-aead-443a-a84a-985eacea3af2)
 
 The user will be first prompted to either signup or login. Next, the user will be asked to choose one among three topics that they would wish to practice their coding skills in, Variables, Loops and Branches, and Functions. Next, it prompts the user to choose two kinds of questions they would like to test their skills in. Short answer programs will provide the user with a code and ask for the output. Coding exercise presents the user with a prompt asking them to write the code.
 
